@@ -1,0 +1,46 @@
+buildscript {
+    repositories {
+        maven { url = 'https://maven.minecraftforge.net/' }
+        mavenCentral()
+    }
+    dependencies {
+    }
+}
+
+plugins {
+    id 'net.minecraftforge.gradle' version '[6.0.24,6.2)'
+}
+
+
+version = '1.0.0'
+group = 'net.erutobusiness'
+base { archivesName = 'spoiled_nested' }
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+}
+
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.3.0'
+    // Spoiled の public な入口（SpoilHelper / SpoilHandler / SpoiledConfigCache / ChunkHelper）を
+    // 呼ぶためだけ。実行時は同梱しない（利用者が入れている Spoiled 本体に当てる）
+    compileOnly files('libs/spoiled.jar')
+}
+
+jar {
+    manifest {
+        attributes([
+            'Specification-Title'   : 'spoiled_nested',
+            'Specification-Version' : '1',
+            'Implementation-Title'  : 'Spoiled Nested Containers',
+            'Implementation-Version': project.version,
+        ])
+    }
+}
