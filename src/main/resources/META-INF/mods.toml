@@ -1,0 +1,39 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+    modId="spoiled_nested"
+    version="${file.jarVersion}"
+    displayName="Spoiled Nested Containers"
+    authors="erutobusiness"
+    description='''
+Spoiled の腐敗判定が届いていない2箇所を埋める。
+
+1. 入れ子の容器（チェストに入れたシュルカーボックス等）
+   Spoiled は走査経路が3つあるが、**ブロック容器の経路だけが入れ子へ潜らない**
+   （プレイヤーの持ち物とエンティティ容器は潜る）。そのため
+   「チェストにシュルカーを入れておけば中身は一切腐らない」という抜け道があった。
+   ここを他の2経路と同じ挙動に揃える。
+
+2. エンダーチェスト
+   中身はブロックエンティティではなくプレイヤーに紐づくため、Spoiled の
+   どの経路からも見えず一切腐らなかった。倍率は containerModifier の
+   `minecraft:ender_chest` を読むので、config の1行で調整できる。
+
+Spoiled 本体は改変しない。public な入口を呼ぶだけ。
+'''
+
+[[dependencies.spoiled_nested]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="SERVER"
+
+[[dependencies.spoiled_nested]]
+    modId="spoiled"
+    mandatory=true
+    versionRange="[2.2,)"
+    ordering="AFTER"
+    side="SERVER"
