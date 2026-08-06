@@ -70,7 +70,14 @@ public class NestedSpoilHandler {
             return;
         }
 
+        // ⚠ **この走査は Spoiled 本体と同じ範囲をもう1回歩く**（入れ子を見るため）。
+        //    30 秒に1回とはいえ、大きな拠点ではバーストになるので所要を自分で測る。
+        //    最初の数回は必ず出し、その後は重いときだけ出す（配布物に入るのでログを汚さない）。
+        long t0 = System.nanoTime();
+        int scanned = 0, containers = 0, nested = 0;
+
         for (BlockPos pos : ChunkHelper.getBlockEntityPositions(level)) {
+            scanned++;
             if (!level.isAreaLoaded(pos, 1)) {
                 continue;
             }
@@ -88,6 +95,7 @@ public class NestedSpoilHandler {
             if (outer == null) {
                 continue;
             }
+            containers++;
             // 外側の器の倍率（冷蔵庫 0.01 など）をまず通す。内側の倍率は
             // spoilItemInHandler が itemContainerModifier で掛けるので、両方が効く
             ResourceLocation outerId = ForgeRegistries.BLOCK_ENTITY_TYPES.getKey(be.getType());
@@ -101,16 +109,34 @@ public class NestedSpoilHandler {
                 }
                 // ⚠ **入れ物であるスロットだけを見る。** 中身が食料そのものの場合は
                 //    Spoiled 本体が既に処理しているので、ここで触ると二重に進む
-                IItemHandler nested = containerStack
+                IItemHandler inner = containerStack
                     .getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
-                if (nested == null) {
+                if (inner == null) {
                     // ⚠ ただし**塩漬けだけは本体が完全に無視する**（saltCompat）ので、
                     //    入れ物でなくてもこちらが低い倍率で進める。二重にはならない
                     salted(level, outer, i, containerStack);
                     continue;
                 }
-                spoilInside(level, containerStack, nested);
+                nested++;
+                spoilInside(level, containerStack, inner);
             }
+        }
+        report(System.nanoTime() - t0, scanned, containers, nested);
+    }
+
+    /** 走査の所要を控える。最初の5回は必ず出し、以後は重いときだけ。 */
+    private static int reports = 0;
+    private static long worstMs = 0;
+
+    private static void report(long nanos, int scanned, int containers, int nested) {
+        long ms = nanos / 1_000_000L;
+        worstMs = Math.max(worstMs, ms);
+        boolean first = reports < 5;
+        reports++;
+        if (first || ms >= 50) {
+            org.apache.logging.log4j.LogManager.getLogger(SpoiledNested.MOD_ID).info(
+                "入れ子の走査: {}ms（ブロックエンティティ {} / 器 {} / 入れ子 {}）最悪 {}ms",
+                ms, scanned, containers, nested, worstMs);
         }
     }
 
