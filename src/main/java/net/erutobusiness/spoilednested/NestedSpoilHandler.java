@@ -104,6 +104,9 @@ public class NestedSpoilHandler {
                 IItemHandler nested = containerStack
                     .getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
                 if (nested == null) {
+                    // ⚠ ただし**塩漬けだけは本体が完全に無視する**（saltCompat）ので、
+                    //    入れ物でなくてもこちらが低い倍率で進める。二重にはならない
+                    salted(level, outer, i, containerStack);
                     continue;
                 }
                 spoilInside(level, containerStack, nested);
@@ -117,6 +120,10 @@ public class NestedSpoilHandler {
             if (stack.isEmpty()) {
                 continue;
             }
+            if (SaltedSpoiling.isSalted(stack)) {
+                salted(level, nested, j, stack);
+                continue;
+            }
             SpoilRecipe recipe = SpoilHelper.getSpoilRecipe(level, stack);
             if (recipe == null) {
                 continue;
@@ -125,6 +132,44 @@ public class NestedSpoilHandler {
             SpoilHandler.spoilItemInHandler(containerStack, nested, j, stack, recipe,
                 level.registryAccess(), level.random);
         }
+    }
+
+    /** 塩漬けの1スタックを低い倍率で進め、腐りきったら置き換える（IItemHandler 版）。 */
+    private void salted(Level level, IItemHandler handler, int slot, ItemStack stack) {
+        if (!SaltedSpoiling.tick(level, stack)) {
+            return;
+        }
+        SpoilRecipe recipe = SaltedSpoiling.recipeFor(level, stack);
+        if (recipe == null) {
+            return;
+        }
+        ItemStack result = recipe.getResultItem(level.registryAccess()).copy();
+        int count = stack.getCount();
+        stack.setCount(0);
+        if (!result.isEmpty()) {
+            result.setCount(count);
+            handler.insertItem(slot, result, false);
+        }
+    }
+
+    /** 同上（バニラの Container 版。プレイヤーの持ち物・エンダーチェスト用）。 */
+    private void salted(Level level, Container container, int slot, ItemStack stack) {
+        if (!SaltedSpoiling.tick(level, stack)) {
+            return;
+        }
+        SpoilRecipe recipe = SaltedSpoiling.recipeFor(level, stack);
+        if (recipe == null) {
+            return;
+        }
+        ItemStack result = recipe.getResultItem(level.registryAccess()).copy();
+        int count = stack.getCount();
+        container.setItem(slot, result.isEmpty() ? ItemStack.EMPTY
+            : withCount(result, count));
+    }
+
+    private static ItemStack withCount(ItemStack stack, int count) {
+        stack.setCount(count);
+        return stack;
     }
 
     // ── 2. エンダーチェスト ────────────────────────────────────────
@@ -142,6 +187,17 @@ public class NestedSpoilHandler {
         if (player.getAbilities().instabuild) {
             return;
         }
+
+        // ⚠ **持ち物の中の塩漬け**。本体は saltCompat で丸ごと無視するので、
+        //    ここで低い倍率で進める（倍率のつまみは containerModifier の `spoiled:salted`）
+        Container inv = player.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (!stack.isEmpty() && SaltedSpoiling.isSalted(stack)) {
+                salted(level, inv, i, stack);
+            }
+        }
+
         // ⚠ 倍率は containerModifier の `minecraft:ender_chest` を読む。
         //    **未登録なら等速**ではなく、ここでは「書いていなければ触らない」ほうが
         //    安全だが、本体の規約（未登録＝等速）に合わせる。config に1行書けば効く
@@ -158,6 +214,10 @@ public class NestedSpoilHandler {
             IItemHandler nested = stack.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
             if (nested != null) {
                 spoilInside((ServerLevel) level, stack, nested);
+                continue;
+            }
+            if (SaltedSpoiling.isSalted(stack)) {
+                salted(level, ender, i, stack);
                 continue;
             }
             SpoilRecipe recipe = SpoilHelper.getSpoilRecipe(level, stack);
