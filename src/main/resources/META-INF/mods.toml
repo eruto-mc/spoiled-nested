@@ -1,12 +1,12 @@
 modLoader="javafml"
 loaderVersion="[47,)"
-license="All Rights Reserved (club internal)"
+license="MIT"
 
 [[mods]]
     modId="spoiled_nested"
     version="${file.jarVersion}"
     displayName="Spoiled Nested Containers"
-    authors="マイクラ部"
+    authors="erutobusiness"
     description='''
 Spoiled の腐敗判定が届いていない2箇所を埋める。
 
