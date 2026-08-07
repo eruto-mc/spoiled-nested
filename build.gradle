@@ -27,11 +27,20 @@ minecraft {
 }
 
 
+repositories {
+    // MOD の依存を取る maven。手元に jar を置かずに済ませるため（2026-08-07）
+    maven {
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
+        content { includeGroup "maven.modrinth" }
+    }
+}
+
 dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.3.0'
     // Spoiled の public な入口（SpoilHelper / SpoilHandler / SpoiledConfigCache / ChunkHelper）を
     // 呼ぶためだけ。実行時は同梱しない（利用者が入れている Spoiled 本体に当てる）
-    compileOnly files('libs/spoiled.jar')
+    compileOnly "maven.modrinth:spoiled:2.2.1"
 }
 
 jar {
