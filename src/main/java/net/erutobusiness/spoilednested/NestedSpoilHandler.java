@@ -112,6 +112,17 @@ public class NestedSpoilHandler {
                 IItemHandler inner = containerStack
                     .getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
                 if (inner == null) {
+                    // ⚠ **Contact の小包は capability を持たず NBT に直接書く**ので、
+                    //    上の `getCapability` では永久に見つからない（2026-09-04 追加）。
+                    if (PackageSpoiling.isPackage(containerStack)
+                        && rolls(level, PackageSpoiling.MODIFIER_ID)) {
+                        if (PackageSpoiling.spoilContents(level, containerStack)) {
+                            outer.getStackInSlot(i);   // NBT を直に触ったので保存の印を付ける
+                            be.setChanged();
+                            nested++;
+                        }
+                        continue;
+                    }
                     // ⚠ ただし**塩漬けだけは本体が完全に無視する**（saltCompat）ので、
                     //    入れ物でなくてもこちらが低い倍率で進める。二重にはならない
                     salted(level, outer, i, containerStack);
@@ -219,7 +230,18 @@ public class NestedSpoilHandler {
         Container inv = player.getInventory();
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
-            if (!stack.isEmpty() && SaltedSpoiling.isSalted(stack)) {
+            if (stack.isEmpty()) {
+                continue;
+            }
+            // ⚠ **持ち歩いている小包**（2026-09-04 追加）。⚠ ここが本命——
+            //    包むだけで携帯氷室になっていたのは、この経路が空いていたから。
+            if (PackageSpoiling.isPackage(stack)) {
+                if (rolls(level, PackageSpoiling.MODIFIER_ID)) {
+                    PackageSpoiling.spoilContents(level, stack);
+                }
+                continue;
+            }
+            if (SaltedSpoiling.isSalted(stack)) {
                 salted(level, inv, i, stack);
             }
         }
@@ -240,6 +262,12 @@ public class NestedSpoilHandler {
             IItemHandler nested = stack.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
             if (nested != null) {
                 spoilInside((ServerLevel) level, stack, nested);
+                continue;
+            }
+            // ⚠ エンダーチェストへ入れた小包（2026-09-04 追加）。
+            //    ⚠ **ここを塞がないと「小包をエンダーチェットへ」で保存できてしまう**
+            if (PackageSpoiling.isPackage(stack)) {
+                PackageSpoiling.spoilContents(level, stack);
                 continue;
             }
             if (SaltedSpoiling.isSalted(stack)) {
