@@ -123,6 +123,17 @@ public class NestedSpoilHandler {
                         }
                         continue;
                     }
+                    // ⚠ **チェストの中のバンドル**（2026-09-08 追加）。小包と同じく
+                    //    capability を持たないので、上の `getCapability` では永久に見つからない。
+                    //    ⚠ 倍率の判定は `spoilItemInHandler` が持っているので、ここでは掛けない
+                    if (BundleSpoiling.isBundle(containerStack)) {
+                        if (BundleSpoiling.spoilContents(containerStack,
+                                (c, h) -> spoilInside(level, c, h))) {
+                            be.setChanged();       // NBT を直に触ったので保存の印を付ける
+                            nested++;
+                        }
+                        continue;
+                    }
                     // ⚠ ただし**塩漬けだけは本体が完全に無視する**（saltCompat）ので、
                     //    入れ物でなくてもこちらが低い倍率で進める。二重にはならない
                     salted(level, outer, i, containerStack);
@@ -241,6 +252,13 @@ public class NestedSpoilHandler {
                 }
                 continue;
             }
+            // ⚠ **持ち歩いているバンドル**（2026-09-08 追加）。⚠ ここが本命——
+            //    糸2本とウサギの皮1枚で作れる入れ物が、氷室より強い保存箱になっていた
+            if (BundleSpoiling.isBundle(stack)) {
+                BundleSpoiling.spoilContents(stack,
+                    (c, h) -> spoilInside((ServerLevel) level, c, h));
+                continue;
+            }
             if (SaltedSpoiling.isSalted(stack)) {
                 salted(level, inv, i, stack);
             }
@@ -268,6 +286,13 @@ public class NestedSpoilHandler {
             //    ⚠ **ここを塞がないと「小包をエンダーチェットへ」で保存できてしまう**
             if (PackageSpoiling.isPackage(stack)) {
                 PackageSpoiling.spoilContents(level, stack);
+                continue;
+            }
+            // ⚠ エンダーチェストへ入れたバンドル（2026-09-08 追加）。
+            //    ⚠ **ここを塞がないと「バンドルをエンダーチェストへ」で保存できてしまう**
+            if (BundleSpoiling.isBundle(stack)) {
+                BundleSpoiling.spoilContents(stack,
+                    (c, h) -> spoilInside((ServerLevel) level, c, h));
                 continue;
             }
             if (SaltedSpoiling.isSalted(stack)) {
