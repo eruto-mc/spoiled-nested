@@ -23,7 +23,7 @@ import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.registries.ForgeRegistries;
 
 /**
- * 入れ子の容器とエンダーチェストを、Spoiled 本体と同じ拍子で処理する。
+ * 入れ子の容器・エンダーチェスト・Origins の inventory の能力の箱（Shulk の Hoarder など）を、Spoiled 本体と同じ拍子で処理する。
  *
  * <p>⚠ <b>Spoiled 本体と同じ tick でしか動かない</b>（{@code gameTime % spoilRate == 0}）。
  * 独自の間隔で回すと、同じアイテムが1回の更新で二重に進む。
@@ -267,36 +267,51 @@ public class NestedSpoilHandler {
         // ⚠ 倍率は containerModifier の `minecraft:ender_chest` を読む。
         //    **未登録なら等速**ではなく、ここでは「書いていなければ触らない」ほうが
         //    安全だが、本体の規約（未登録＝等速）に合わせる。config に1行書けば効く
-        if (!rolls(level, ENDER_CHEST)) {
-            return;
+        if (rolls(level, ENDER_CHEST)) {
+            spoilPlayerBox((ServerLevel) level, player.getEnderChestInventory());
         }
-        Container ender = player.getEnderChestInventory();
-        for (int i = 0; i < ender.getContainerSize(); i++) {
-            ItemStack stack = ender.getItem(i);
+
+        // ── 3. Origins の inventory の能力の箱（Shulk の Hoarder など）──
+        //    ⚠ 中身はプレイヤーの持ち物ではなく能力の記録の中に在り、Spoiled のどの経路からも見えない。
+        //    ⚠ **ここを塞がないと「その箱へ入れる」で永久保存できてしまう**（シュルカーボックスごと入れても）。
+        //    倍率は containerModifier の `origins:inventory`（書いていなければ等速＝持ち物と同じ）
+        for (Container box : OriginsInventories.of(player)) {
+            if (rolls(level, OriginsInventories.MODIFIER_ID)) {
+                spoilPlayerBox((ServerLevel) level, box);
+            }
+        }
+    }
+
+    /**
+     * プレイヤーに紐づく箱（エンダーチェスト・Origins の能力の箱）の中身を1回分進める。
+     * 中の入れ物（シュルカーボックス・小包・バンドル）へも1段潜る。
+     */
+    private void spoilPlayerBox(ServerLevel level, Container box) {
+        for (int i = 0; i < box.getContainerSize(); i++) {
+            ItemStack stack = box.getItem(i);
             if (stack.isEmpty()) {
                 continue;
             }
-            // エンダーチェストの中の入れ物（シュルカー）も潜る
+            // 箱の中の入れ物（シュルカー）も潜る
             IItemHandler nested = stack.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
             if (nested != null) {
-                spoilInside((ServerLevel) level, stack, nested);
+                spoilInside(level, stack, nested);
                 continue;
             }
-            // ⚠ エンダーチェストへ入れた小包（2026-09-04 追加）。
-            //    ⚠ **ここを塞がないと「小包をエンダーチェットへ」で保存できてしまう**
+            // ⚠ 箱へ入れた小包（2026-09-04 追加）。
+            //    ⚠ **ここを塞がないと「小包をエンダーチェストへ」で保存できてしまう**
             if (PackageSpoiling.isPackage(stack)) {
                 PackageSpoiling.spoilContents(level, stack);
                 continue;
             }
-            // ⚠ エンダーチェストへ入れたバンドル（2026-09-08 追加）。
+            // ⚠ 箱へ入れたバンドル（2026-09-08 追加）。
             //    ⚠ **ここを塞がないと「バンドルをエンダーチェストへ」で保存できてしまう**
             if (BundleSpoiling.isBundle(stack)) {
-                BundleSpoiling.spoilContents(stack,
-                    (c, h) -> spoilInside((ServerLevel) level, c, h));
+                BundleSpoiling.spoilContents(stack, (c, h) -> spoilInside(level, c, h));
                 continue;
             }
             if (SaltedSpoiling.isSalted(stack)) {
-                salted(level, ender, i, stack);
+                salted(level, box, i, stack);
                 continue;
             }
             SpoilRecipe recipe = SpoilHelper.getSpoilRecipe(level, stack);
@@ -308,10 +323,10 @@ public class NestedSpoilHandler {
                 ItemStack spoiled = recipe.getResultItem(level.registryAccess()).copy();
                 int count = stack.getCount();
                 if (spoiled.isEmpty()) {
-                    ender.setItem(i, ItemStack.EMPTY);
+                    box.setItem(i, ItemStack.EMPTY);
                 } else {
                     spoiled.setCount(count);
-                    ender.setItem(i, spoiled);
+                    box.setItem(i, spoiled);
                 }
             }
         }

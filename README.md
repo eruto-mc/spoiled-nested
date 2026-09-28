@@ -1,6 +1,6 @@
 # Spoiled Nested Containers
 
-[Spoiled](https://modrinth.com/mod/spoiled) の腐敗判定が届いていない2箇所を埋める。
+[Spoiled](https://modrinth.com/mod/spoiled) の腐敗判定が届いていない所を埋める。
 Minecraft 1.20.1 / Forge。**サーバ側専用**（`side=SERVER`）。Spoiled 本体は改変しない。
 
 ## 何を直すか
@@ -29,6 +29,19 @@ Spoiled の走査経路は3つあるが、**ブロック容器の経路だけが
 
 中身はブロックエンティティではなく `Player#getEnderChestInventory()` に紐づくため、
 **Spoiled のどの経路からも見えない**。config に `minecraft:ender_chest` を書いても効かない。
+
+### 4. Origins の inventory の能力の箱（1.4.0）
+
+Origins（Apoli）の `origins:inventory` の能力（例: Shulk の Hoarder＝`origins:shulker_inventory`）は、
+中身をプレイヤーの持ち物ではなく**能力の記録の中の `SimpleContainer`** に入れる
+（Apoli の `InventoryPower#getInventory` → `DataContainer.container`）。
+Spoiled のどの経路からも見えないので、**この箱に入れた食べ物は腐らなかった**（シュルカーボックスごと入れれば箱の中身も）。
+
+- エンダーチェストと同じ処理を当てる（中の入れ物へ1段潜る・小包・バンドル・塩漬けも同じ）
+- 倍率は `containerModifier` の擬似キー **`origins:inventory`**。**書いていなければ等速**（持ち物と同じ）
+- ⚠ **Origins への依存は持たない**。Origins（Forge 版）は maven から取れず、ビルドの依存に足すと CI でビルドできなくなるため、
+  **在れば実行時にリフレクションで呼ぶ**。受け渡しは Minecraft と Forge の型（`Entity`・`LazyOptional`・`Holder`・`Container`）だけ。
+  起動時に「在る／無い」を1行ログに出し、在るのに呼び方が合わない（版が変わった）ときは警告を1行出して止める
 
 ## どう直すか
 
@@ -70,6 +83,8 @@ Spoiled の走査経路は3つあるが、**ブロック容器の経路だけが
 倍率 0.5 の期待値ちょうど。判定は `probe mark` で機械化してあり **OK / NG 0**。
 ⚠ **survival で行うこと**——Spoiled はクリエイティブのプレイヤーを丸ごと飛ばす。
 ⚠ **腐敗が進んだ状態から始めること**——まっさらだと `tag.isEmpty()` 分岐でタグが付かず区別できない。
+
+Origins の能力の箱は `dev/verify/scenarios/mods/spoiled-origins-closet.json`（Shulk にして G で箱を開き、Shift クリックでパンを入れる）。
 
 ### 3. 塩漬けを「完全停止」から「倍率」へ
 

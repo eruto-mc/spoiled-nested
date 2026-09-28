@@ -4,7 +4,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
 
 /**
- * Spoiled の腐敗判定が届いていない2箇所を埋める。Spoiled 本体は改変しない。
+ * Spoiled の腐敗判定が届いていない所を埋める。Spoiled 本体は改変しない。
  *
  * <p>1. <b>入れ子の容器</b>（チェストに入れたシュルカーボックス等）。
  * Spoiled の走査経路は3つあるが、<b>ブロック容器の経路だけが入れ子へ潜らない</b>。
@@ -20,6 +20,10 @@ import net.minecraftforge.fml.common.Mod;
  * <p>2. <b>エンダーチェスト</b>。中身はブロックエンティティではなく
  * {@code Player#getEnderChestInventory()} に紐づくため、Spoiled のどの経路からも見えない。
  *
+ * <p>3. <b>Origins の inventory の能力の箱</b>（Shulk の Hoarder など）。
+ * 中身は能力の記録の中に在り、Spoiled のどの経路からも見えない。Origins への依存は持たず、
+ * 在れば呼ぶ（{@link OriginsInventories}）。
+ *
  * <p><b>倍率は Spoiled の config をそのまま読む</b>ので、当部の設定
  * （{@code containerModifier} / {@code itemContainerModifier}）の1行で調整できる。
  */
@@ -29,5 +33,6 @@ public class SpoiledNested {
 
     public SpoiledNested() {
         MinecraftForge.EVENT_BUS.register(new NestedSpoilHandler());
+        OriginsInventories.init();
     }
 }
