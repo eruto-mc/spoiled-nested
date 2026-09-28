@@ -84,6 +84,18 @@ Spoiled のどの経路からも見えないので、**この箱に入れた食�
 ⚠ **survival で行うこと**——Spoiled はクリエイティブのプレイヤーを丸ごと飛ばす。
 ⚠ **腐敗が進んだ状態から始めること**——まっさらだと `tag.isEmpty()` 分岐でタグが付かず区別できない。
 
+### 5. Spoiled 本体が 0 で割って落ちるのを防ぐ（1.4.1）
+
+Spoiled 2.2.x の `SpoilHandler.onWorldTick` は毎 tick `level.getGameTime() % SpoiledConfigCache.spoilRate` を計算する。
+`spoilRate` は `long` の static で**初めは 0**、COMMON の設定を読んだとき（`SpoiledConfig.onLoad` → `setSpoilRate`）にだけ入る。
+設定は 1 未満にできない（`defineInRange(…, 30, 1, …)`）ので、0 になるのは「設定を読む前に世界が動いた」ときだけで、
+そのとき `ArithmeticException: / by zero` でサーバが落ちる（起動 5 回のうち 1 回起きた。順番が逆になった理由は分かっていない）。
+
+- 優先度 HIGHEST で同じ tick を見て（Spoiled は HIGH）、値が 0 以下なら設定の値を入れ直し、警告を 1 行出す
+  （`⚠ Spoiled の腐敗の間隔が 0 のまま世界が動いた…`）。設定がまだ読めなければ設定の既定値を入れる
+- 値が 1 以上なら何もしない
+- ⚠ 0 の場合をゲームの中で起こして試してはいない（値を 0 にする手が無い）。確かめたのは、値が正しいときに邪魔をしないことだけ
+
 Origins の能力の箱は `dev/verify/scenarios/mods/spoiled-origins-closet.json`（Shulk にして G で箱を開き、Shift クリックでパンを入れる）。
 
 ### 3. 塩漬けを「完全停止」から「倍率」へ

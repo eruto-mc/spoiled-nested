@@ -24,6 +24,8 @@ import net.minecraftforge.fml.common.Mod;
  * 中身は能力の記録の中に在り、Spoiled のどの経路からも見えない。Origins への依存は持たず、
  * 在れば呼ぶ（{@link OriginsInventories}）。
  *
+ * <p>ほかに、Spoiled 本体の腐敗の間隔が 0 のまま世界が動いて 0 で割って落ちるのを防ぐ（{@link SpoilRateGuard}）。
+ *
  * <p><b>倍率は Spoiled の config をそのまま読む</b>ので、当部の設定
  * （{@code containerModifier} / {@code itemContainerModifier}）の1行で調整できる。
  */
@@ -33,6 +35,7 @@ public class SpoiledNested {
 
     public SpoiledNested() {
         MinecraftForge.EVENT_BUS.register(new NestedSpoilHandler());
+        MinecraftForge.EVENT_BUS.register(new SpoilRateGuard());
         OriginsInventories.init();
     }
 }
