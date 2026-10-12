@@ -30,7 +30,7 @@ import net.minecraftforge.items.ItemStackHandler;
  *
  * <p><b>なぜ本体の入口へ渡すのか</b>: {@link PackageSpoiling} は
  * {@code SpoilHelper} を直に呼んでいて、⚠ <b>{@code SpoilHandler.spoilItemInHandler} を通らない</b>。
- * そのまま写すと、入れ物ごとの倍率（{@code itemContainerModifier}）も、
+ * そのままコピーすると、入れ物ごとの倍率（{@code itemContainerModifier}）も、
  * 入れ物に付けた付与も効かない。こちらは中身を<b>入れ物の口の形に包んで</b>渡すので、
  * 本体が持っている判定がそのまま全部効く。
  */
